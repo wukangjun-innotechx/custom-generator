@@ -1,8 +1,8 @@
 module.exports = 
 {
 	"router": {
-		"entry": "test/pages",
-		"output": "test/router/config.js",
+		"entry": "src/pages",
+		"output": "src/router/config.js",
 		"pattern": "**/index.js",
 		"replace": {
 			"component": "{router}"

@@ -6,14 +6,16 @@ var globby = require('globby')
 var paths = require('../config/paths')
 var { warn } = require('../utils/warn')
 var { isDirectory } = require('../utils')
-var { isObject, FIELD_REGEXP } = require('../utils/helper')
+var { isObject, FIELD_REGEXP, TPL_REGEXP } = require('../utils/helper')
 var { AutoGeneratorError } = require('../utils/error')
 var FactoryAssemblyLine = require('../utils/FactoryAssemblyLine')
 var assemblyline = new FactoryAssemblyLine()
+var _GLOBAL_CONFIG = {}
 
 process.env.AUTOGENERATOR_CONFIGNAME = 'config.json'
 
 module.exports = function routerGenerator(config) {
+  _GLOBAL_CONFIG = config
   if (isObject(config.router)) {
     assemblyline.start(config.router)
   } else {
@@ -107,10 +109,19 @@ assemblyline
         var value = config.replace[key]
         var regexp = new RegExp(`\\s*\"${key}\":\\s*\"([\\w\/\.]+)"`, 'g')
         template = template.replace(regexp, function(m, k) {
-          return `\n"${key}": ${value.replace(FIELD_REGEXP, function() { return k })}`
+          const templateField = value.replace(TPL_REGEXP, '$1')
+          const templateFieldByRouter = _GLOBAL_CONFIG.template[templateField]
+          try {
+            return `\n"${key}": ${templateFieldByRouter.replace(FIELD_REGEXP, function() { return k })}`
+          } catch (error) {
+            throw new AutoGeneratorError(
+              `you should confiuration ${templateField} in you config file`
+            )
+          }
         })
         fs.writeFileSync(
           path.resolve(paths.appPath, config.output),
+          // 这里美化不是很好，寻找更好的插件替换
           pretty('export default ' + template)
         )
       })
